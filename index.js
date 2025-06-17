@@ -183,13 +183,11 @@ res.status(500).send(`❌ Error al ejecutar: ${error.message}`);
 }
 });
 
-// Logout
 app.get('/logout', (req, res) => {
-req.session.destroy(() => {
-res.redirect('/');
-});
+  console.log('Logout solicitado (no hay sesión que destruir).');
+  res.redirect('/');
 });
 
 app.listen(port, () => {
-console.log(`✅ Servidor iniciado en http://localhost:${port}/`);
+  console.log(`✅ Servidor iniciado en http://localhost:${port}/login`);
 });
