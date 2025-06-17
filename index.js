@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const { Client } = require('pg');
 require('dotenv').config();
+const { URL } = require('url'); // Import URL for parsing connection string
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -26,13 +27,40 @@ app.get('/', (req, res) => {
 app.post('/', async (req, res) => {
   const { username, password } = req.body;
 
-  if (username && password) {
-      console.log(`Usuario "${username}" intentó iniciar sesión.`);
-      res.redirect('/procedimientos');
-  } else {
-      res.status(401).send(`<h2>❌ Login fallido: Faltan credenciales.</h2>`);
+  if (!username || !password) {
+    return res.status(401).send(`<h2>❌ Login fallido: Debes proporcionar usuario y contraseña.</h2>`);
+  }
+
+  // Parse the base DATABASE_URL from .env
+  const parsedDbUrl = new URL(process.env.DATABASE_URL);
+
+  // Create a new Client configuration, overriding user and password
+  const clientConfig = {
+    host: parsedDbUrl.hostname,
+    port: parsedDbUrl.port || 5432, // Default to 5432 if port is missing
+    database: parsedDbUrl.pathname.substring(1), // Remove leading '/'
+    user: username, // Use username from the form
+    password: password, // Use password from the form
+    ssl: {
+      rejectUnauthorized: false
+    }
+  };
+
+  const client = new Client(clientConfig);
+
+  try {
+    await client.connect(); // This will now truly attempt to connect with form credentials
+    await client.end();
+
+    console.log(`✅ Usuario "${username}" autenticado con éxito.`);
+    res.redirect('/procedimientos');
+  } catch (err) {
+    console.error(`❌ Error de login para "${username}":`, err.message);
+    // Be careful not to expose too much detail in the error message to the user
+    res.status(401).send(`<h2>❌ Login fallido: Credenciales inválidas o error de conexión.</h2>`);
   }
 });
+
 
 app.get('/procedimientos', authMiddleware, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'procedimientos.html'));
@@ -189,5 +217,5 @@ app.get('/logout', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`✅ Servidor iniciado en http://localhost:${port}/login`);
+  console.log(`✅ Servidor iniciado en http://localhost:${port}/`);
 });
