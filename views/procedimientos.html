@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procedimientos PostgreSQL</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+    }
+
+    .header::before {
+      content: "🐘";
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 15px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.1);
+      }
+    }
+
+    h1 {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 1.1rem;
+      font-weight: 400;
+    }
+
+    .control-panel {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .form-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    select {
+      padding: 15px 20px;
+      font-size: 1rem;
+      border: 2px solid #e1e5e9;
+      border-radius: 12px;
+      background: #f8f9fa;
+      color: #000 !important;
+      min-width: 300px;
+      outline: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    select option {
+      color: #000 !important;
+      background: #fff !important;
+    }
+
+    select:focus {
+      border-color: #667eea;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      transform: translateY(-2px);
+    }
+
+    select:hover {
+      border-color: #a8b3f0;
+      transform: translateY(-1px);
+    }
+
+    .btn {
+      padding: 15px 30px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      min-width: 150px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn-primary:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:active {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .resultado-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      min-height: 200px;
+    }
+
+    .resultado-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #e1e5e9;
+    }
+
+    .resultado-header h3 {
+      color: #333;
+      font-size: 1.3rem;
+      margin-left: 10px;
+    }
+
+    #resultado {
+      font-family: 'Courier New', monospace;
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      border: 2px solid #e1e5e9;
+      color: #000 !important;
+      min-height: 120px;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #667eea;
+      font-style: italic;
+    }
+
+    .loading::before {
+      content: "⟳";
+      font-size: 1.2rem;
+      margin-right: 10px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .error {
+      color: #dc3545;
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      display: flex;
+      align-items: center;
+    }
+
+    .error::before {
+      content: "❌";
+      margin-right: 10px;
+    }
+
+    .success {
+      color: #155724;
+      background: #d4edda;
+      border-color: #c3e6cb;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 20px 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .logout-btn {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      text-decoration: none;
+      padding: 12px 25px;
+      border-radius: 12px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    .logout-btn::before {
+      content: "🚪";
+      margin-right: 8px;
+    }
+
+    .logout-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+      text-decoration: none;
+      color: white;
+    }
+
+    .status-info {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .form-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      select {
+        min-width: auto;
+        width: 100%;
+      }
+      
+      .footer {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      .header,
+      .control-panel,
+      .resultado-container,
+      .footer {
+        background: rgba(30, 30, 30, 0.95);
+        color: #e0e0e0;
+      }
+      
+      h1 {
+        color: #fff;
+      }
+      
+      .subtitle,
+      .resultado-header h3 {
+        color: #ccc;
+      }
+      
+      select {
+        background: #fff !important;
+        border-color: #ddd;
+        color: #000 !important;
+      }
+
+      select option {
+        color: #000 !important;
+        background: #fff !important;
+      }
+      
+      #resultado {
+        background: #fff !important;
+        border-color: #ddd;
+        color: #000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Procedimientos PostgreSQL</h1>
+      <p class="subtitle">Ejecuta procedimientos almacenados de forma segura</p>
+    </div>
+
+    <div class="control-panel">
+      <div class="form-group">
+        <select id="procSelect">
+          <option value="" disabled selected>🔍 Selecciona un procedimiento</option>
+          <option value="fecha_inicioserver">Fecha estimada de creación</option>
+          <option value="loop1a10">Ciclo de 1 a 10</option>
+          <option value="fecha_creacion">Fecha creación de base</option>
+          <option value="esbisiesto">bisiesto</option>
+          <option value="sumanumeros">Suma de 2 numeros</option>
+          <option value="looppares">Secuencia pares</option>
+          <option value="recorrer_insertar">Insertar 10 números</option>
+          <option value="totalobjetos">Total de objetos</option>
+        </select>
+
+        <button id="ejecutarBtn" class="btn btn-primary">
+          ▶️ Ejecutar
+        </button>
+      </div>
+    </div>
+
+    <div class="resultado-container">
+      <div class="resultado-header">
+        <span>📊</span>
+        <h3>Resultado de la Ejecución</h3>
+      </div>
+      <div id="resultado">Selecciona y ejecuta un procedimiento para ver los resultados aquí...</div>
+    </div>
+
+    <div class="footer">
+      <div class="status-info">
+        <strong>Estado:</strong> <span id="status">Listo</span> | 
+        <strong>Conexión:</strong> PostgreSQL ✅
+      </div>
+      <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('ejecutarBtn');
+    const select = document.getElementById('procSelect');
+    const resultado = document.getElementById('resultado');
+    const status = document.getElementById('status');
+
+    btn.addEventListener('click', () => {
+      const proc = select.value;
+      if (!proc) {
+        alert('⚠️ Por favor selecciona un procedimiento.');
+        return;
+      }
+
+      // Update UI state
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Ejecutando...';
+      status.textContent = 'Ejecutando procedimiento...';
+      resultado.className = 'loading';
+      resultado.innerHTML = 'Ejecutando procedimiento, por favor espera...';
+
+      fetch(`/ejecutar/${proc}`)
+        .then(res => {
+          if (!res.ok) throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
+          return res.text();
+        })
+        .then(html => {
+          resultado.className = 'success';
+          resultado.innerHTML = html;
+          status.textContent = 'Procedimiento ejecutado exitosamente';
+        })
+        .catch(err => {
+          resultado.className = 'error';
+          resultado.innerHTML = `Error en la ejecución: ${err.message}`;
+          status.textContent = 'Error en la ejecución';
+        })
+        .finally(() => {
+          btn.disabled = false;
+          btn.innerHTML = '▶️ Ejecutar';
+          setTimeout(() => {
+            status.textContent = 'Listo';
+          }, 3000);
+        });
+    });
+
+    // Add keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter' && !btn.disabled) {
+        btn.click();
+      }
+    });
+
+    // Auto-focus select on load
+    window.addEventListener('load', () => {
+      select.focus();
+    });
+  </script>
+</body>
+</html>
