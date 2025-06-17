@@ -25,16 +25,16 @@ app.use(session({
 
 function authMiddleware(req, res, next) {
   if (!req.session.user) {
-    return res.redirect('/login');
+    return res.redirect('/');
   }
   next();
 }
 
-app.get('/login', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'login.html'));
 });
 
-app.post('/login', async (req, res) => {
+app.post('/', async (req, res) => {
   const { username, password } = req.body;
 
   if (username && password) {
@@ -197,10 +197,10 @@ res.status(500).send(`❌ Error al ejecutar: ${error.message}`);
 // Logout
 app.get('/logout', (req, res) => {
 req.session.destroy(() => {
-res.redirect('/login');
+res.redirect('/');
 });
 });
 
 app.listen(port, () => {
-console.log(`✅ Servidor iniciado en http://localhost:${port}/login`);
+console.log(`✅ Servidor iniciado en http://localhost:${port}/`);
 });
