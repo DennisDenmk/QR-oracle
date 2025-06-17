@@ -182,6 +182,43 @@ END $$;
       rejectUnauthorized: false
     }
   });
+  app.post('/ejecutar-personalizado', authMiddleware, async (req, res) => {
+  const userSql = req.body.sql;
+
+  if (!userSql || userSql.trim().length === 0) {
+    return res.status(400).send(`<h2>❌ Debes ingresar una consulta.</h2><a href="/procedimientos">← Volver</a>`);
+  }
+
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+
+  const notices = [];
+
+  client.on('notice', (msg) => {
+    notices.push(msg.message);
+  });
+
+  try {
+    await client.connect();
+    await client.query(userSql);
+    await client.end();
+
+    res.send(`
+<h2>✅ Resultado:</h2>
+<pre style="background:#eee; padding:10px; white-space: pre-wrap;">${notices.length ? notices.join('\n') : 'No hubo salida'}</pre>
+
+<h3>Código SQL ejecutado:</h3>
+<textarea rows="10" cols="80" readonly style="white-space: pre-wrap;">${userSql}</textarea>
+<br><a href="/procedimientos">← Volver</a>
+`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(`<h2>❌ Error al ejecutar:</h2><pre>${error.message}</pre><br><a href="/procedimientos">← Volver</a>`);
+  }
+});
+
 
   const notices = [];
 
