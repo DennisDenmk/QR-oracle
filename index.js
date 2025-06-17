@@ -1,5 +1,4 @@
 const express = require('express');
-const session = require('express-session');
 const path = require('path');
 const { Client } = require('pg');
 require('dotenv').config();
@@ -16,17 +15,7 @@ if (!process.env.DATABASE_URL) {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('views'));
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'clave-secreta-super-segura',
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' }
-}));
-
 function authMiddleware(req, res, next) {
-  if (!req.session.user) {
-    return res.redirect('/');
-  }
   next();
 }
 
@@ -38,7 +27,7 @@ app.post('/', async (req, res) => {
   const { username, password } = req.body;
 
   if (username && password) {
-      req.session.user = { username, password };
+      console.log(`Usuario "${username}" intentó iniciar sesión.`);
       res.redirect('/procedimientos');
   } else {
       res.status(401).send(`<h2>❌ Login fallido: Faltan credenciales.</h2>`);
