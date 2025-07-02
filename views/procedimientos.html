@@ -374,28 +374,41 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Procedimientos PostgreSQL</h1>
+            <h1>Procedimientos Oracle</h1>
             <p class="subtitle">Ejecuta procedimientos almacenados de forma segura</p>
         </div>
 
         <div class="control-panel">
-            <div class="form-group">
+            <div class="form-group">    
+                <a href="/tablas">🔍 Ver todas las tablas</a>
+                <a href="/nuevo-estudiante">Qr estudiante</a>
+                <a href="/estudiantes">Ver estudiantes</a>
+                <a href="/qr_generados">Qr empleado</a>
+
                 <select id="procSelect">
                     <option value="" disabled selected>🔍 Selecciona un procedimiento</option>
-                    <option value="fecha_inicioserver">Fecha estimada de creación</option>
-                    <option value="loop1a10">Ciclo de 1 a 10</option>
-                    <option value="fecha_creacion">Fecha creación de base</option>
-                    <option value="esbisiesto">bisiesto</option>
                     <option value="sumanumeros">Suma de 2 numeros</option>
-                    <option value="looppares">Secuencia pares</option>
-                    <option value="recorrer_insertar">Insertar 10 números</option>
-                    <option value="totalobjetos">Total de objetos</option>
-                    <option value="personalizado">📝 Ejecutar código personalizado</option>
+                    <option value="aumentoSalario">Aumentar Salario</option>
+                    <option value="fechaCreacionBase">Fecha creación de base</option>
+                    <option value="bucleLoop">Bucle LOOP</option>
+                    <option value="guardarNumeros">Guardar numeros</option>
+                    <option value="impresionNumerosPares">Secuencia pares</option>
+                    <option value="fechaActual">Fecha actual</option>
+                    <option value="mostrarInfoEmpleado">Info empleado</option>
+                    <option value="totalObjetos">📝 Total objetos</option>
+                    <option value="aumentarSalarioDepartamento">Aumentar Salario</option>
+                    <option value="generarCorreo">Generar Correo</option>
+                    <option value="loop1a10">Bucle 1 a 10</option>
+                    <option value="guardarCedula">Guardar Cedula</option>
                 </select>
 
                 <button id="ejecutarBtn" class="btn btn-primary">
                     ▶️ Ejecutar
                 </button>
+                <div id="inputCedula" style="display:none; margin-top: 10px;">
+                    <input type="text" id="cedulaInput" maxlength="10" placeholder="Ingrese la cédula" class="form-control" />
+                </div>
+
                 <div id="formularioSQL"  style="display:none; margin-top: 20px;">
                     <textarea id="sqlPersonalizado" rows="10" cols="80"
                         placeholder="Escribe aquí tu bloque SQL (ej. DO $$...$$;)"></textarea><br>
@@ -423,113 +436,73 @@
     </div>
 
   <script>
-  
-  const btn = document.getElementById('ejecutarBtn');
-  const select = document.getElementById('procSelect');
-  const resultado = document.getElementById('resultado');
-  const status = document.getElementById('status');
-  const formularioSQL = document.getElementById('formularioSQL');
-  const btnPersonalizado = document.getElementById('btnPersonalizado');
+const btn = document.getElementById('ejecutarBtn');
+const select = document.getElementById('procSelect');
+const resultado = document.getElementById('resultado');
+const status = document.getElementById('status');
+const formularioSQL = document.getElementById('formularioSQL');
+const btnPersonalizado = document.getElementById('btnPersonalizado');
+const inputCedula = document.getElementById('inputCedula');
 
-  select.addEventListener('change', () => {
+select.addEventListener('change', () => {
     if (select.value === 'personalizado') {
-      formularioSQL.style.display = 'block';
+        formularioSQL.style.display = 'block';
+        inputCedula.style.display = 'none';
+    } else if (select.value === 'guardarCedula') {
+        formularioSQL.style.display = 'none';
+        inputCedula.style.display = 'block';
     } else {
-      formularioSQL.style.display = 'none';
+        formularioSQL.style.display = 'none';
+        inputCedula.style.display = 'none';
     }
-  });
+});
 
-  btn.addEventListener('click', () => {
+btn.addEventListener('click', () => {
     const proc = select.value;
+    let url = `/ejecutar/${proc}`;
+
     if (!proc || proc === 'personalizado') {
-      alert('⚠️ Por favor selecciona un procedimiento válido.');
-      return;
+        alert('⚠️ Por favor selecciona un procedimiento válido.');
+        return;
     }
 
-    // Update UI state
+    if (proc === 'guardarCedula') {
+        const cedula = document.getElementById('cedulaInput').value.trim();
+        if (!/^\d{10}$/.test(cedula)) {
+            alert('⚠️ Ingresa una cédula válida de 10 dígitos.');
+            return;
+        }
+        url += `?cedula=${cedula}`;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '⏳ Ejecutando...';
     status.textContent = 'Ejecutando procedimiento...';
     resultado.className = 'loading';
     resultado.innerHTML = 'Ejecutando procedimiento, por favor espera...';
 
-    fetch(`/ejecutar/${proc}`)
-      .then(res => {
-        if (!res.ok) throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
-        return res.text();
-      })
-      .then(html => {
-        resultado.className = 'success';
-        resultado.innerHTML = html;
-        status.textContent = 'Procedimiento ejecutado exitosamente';
-      })
-      .catch(err => {
-        resultado.className = 'error';
-        resultado.innerHTML = `Error en la ejecución: ${err.message}`;
-        status.textContent = 'Error en la ejecución';
-      })
-      .finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = '▶️ Ejecutar';
-        setTimeout(() => {
-          status.textContent = 'Listo';
-        }, 3000);
-      });
-  });
-
-  btnPersonalizado.addEventListener('click', (e) => {
-    e.preventDefault();
-    const sql = document.getElementById('sqlPersonalizado').value.trim();
-
-    if (!sql) {
-      alert('⚠️ Debes ingresar código SQL.');
-      return;
-    }
-
-    status.textContent = 'Ejecutando código personalizado...';
-    resultado.className = 'loading';
-    resultado.innerHTML = 'Ejecutando código...';
-
-    fetch('/ejecutar-personalizado', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ sql })
-    })
-      .then(res => {
-        if (!res.ok) throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
-        return res.text();
-      })
-      .then(html => {
-        resultado.className = 'success';
-        resultado.innerHTML = html;
-        status.textContent = 'Código personalizado ejecutado con éxito';
-      })
-      .catch(err => {
-        resultado.className = 'error';
-        resultado.innerHTML = `❌ Error en la ejecución: ${err.message}`;
-        status.textContent = 'Error al ejecutar SQL personalizado';
-      })
-      .finally(() => {
-        setTimeout(() => {
-          status.textContent = 'Listo';
-        }, 3000);
-      });
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'Enter' && !btn.disabled) {
-      if (select.value === 'personalizado') {
-        btnPersonalizado.click();
-      } else {
-        btn.click();
-      }
-    }
-  });
-
-  window.addEventListener('load', () => {
-    select.focus();
-  });
-  </script>
+    fetch(url)
+        .then(res => {
+            if (!res.ok) throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
+            return res.text();
+        })
+        .then(html => {
+            resultado.className = 'success';
+            resultado.innerHTML = html;
+            status.textContent = 'Procedimiento ejecutado exitosamente';
+        })
+        .catch(err => {
+            resultado.className = 'error';
+            resultado.innerHTML = `Error en la ejecución: ${err.message}`;
+            status.textContent = 'Error en la ejecución';
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '▶️ Ejecutar';
+            setTimeout(() => status.textContent = 'Listo', 3000);
+        });
+});
+</script>   
 </body>
 
 </html>
