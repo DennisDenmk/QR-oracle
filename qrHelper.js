@@ -4,16 +4,17 @@ const path = require('path');
 const fs = require('fs');
 
 async function generarQRConFotoCentro(dni, nombreFoto, archivoSalida) {
- const url = `http://localhost:3000/estudiante/${dni}`;
+ const url = `http://192.168.37.1:3000/estudiante/${dni}`;
   const tamañoQR = 400;
 
   // 1. Generar QR base como buffer
-  const qrBuffer = await QRCode.toBuffer(url, {
+ const qrBuffer = await QRCode.toBuffer(url, {
   width: tamañoQR,
-  margin: 1,
+  margin: 2,
+  errorCorrectionLevel: 'H', // Nivel alto de corrección
   color: {
-    dark: '#0e9f6e',    // Color del QR (verde esmeralda por ejemplo)
-    light: '#ffffff'     // Color del fondo (blanco)
+    dark: '#000000',
+    light: '#ffffff'
   }
 });
 
@@ -23,13 +24,13 @@ async function generarQRConFotoCentro(dni, nombreFoto, archivoSalida) {
   // 3. Cargar foto y redondear
   const fotoPath = path.join(__dirname, 'public/uploads', nombreFoto);
   const foto = await Jimp.read(fotoPath);
-  foto.resize(200, 200).circle();
+  foto.resize(175,175).circle();
 
   // 4. Insertar foto al centro del QR
   const centerX = (qrImage.bitmap.width - foto.bitmap.width) / 2;
   const centerY = (qrImage.bitmap.height - foto.bitmap.height) / 2;
   qrImage.composite(foto, centerX, centerY);
-
+/*
   // 5. Cargar fuente y escribir texto “Grupo 5” dentro del QR (parte superior)
   const font = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
   const texto = 'Grupo 5';
@@ -40,7 +41,7 @@ async function generarQRConFotoCentro(dni, nombreFoto, archivoSalida) {
   qrImage.print(font, textX, textY, texto);
   qrImage.print(font, textX + 1, textY, texto); 
   qrImage.print(font, textX + 2, textY, texto); 
-
+*/
 
   // 6. Guardar imagen
   const salidaPath = path.join(__dirname, 'public/qr_generados', archivoSalida);
