@@ -6,9 +6,6 @@ const multer = require('multer');
 const QRCode = require('qrcode');
 
 
-
-
-// Configuración de almacenamiento
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'public/uploads');
@@ -33,7 +30,7 @@ if (!process.env.ORACLE_USER || !process.env.ORACLE_PASSWORD || !process.env.ORA
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('views'));
 
-// Middleware simple de autenticación (sin sesiones por ahora)
+
 function authMiddleware(req, res, next) {
   next();
 }
@@ -55,6 +52,11 @@ app.post('/', async (req, res) => {
       password: password,
       connectString: process.env.ORACLE_CONNECT_STRING
     });
+     await connection.execute(
+      `INSERT INTO sesiones (usuario) VALUES (:usuario)`,
+      [username],
+      { autoCommit: true }
+    );
     await connection.close();
 
     console.log(`✅ Usuario "${username}" autenticado con éxito.`);
@@ -65,7 +67,6 @@ app.post('/', async (req, res) => {
   }
 });
 app.get('/logout', (req, res) => {
-  // Aquí podrías limpiar sesión si estuvieras usando cookies o sessions
   console.log('🔓 Usuario cerró sesión.');
   res.redirect('/');
 });
@@ -792,7 +793,7 @@ app.get('/estudiantes', async (req, res) => {
       const [dni, nombres, apellidos, carrera, club, foto] = row;
 
       // Nombre de la imagen
-      const nombreFoto = foto.split('/').pop(); // "234423423.png"
+      const nombreFoto = foto.split('/').pop(); // 
       const nombreQR = `${dni}.png`;
 
       // Generar QR personalizado (solo si no existe)
@@ -830,261 +831,275 @@ app.get('/estudiantes', async (req, res) => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Lista de Estudiantes</title>
-        <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-
-          body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-          }
-
-          .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-          }
-
-          .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            padding: 30px;
-            text-align: center;
-            color: white;
-          }
-
-          .header h1 {
-            font-size: 2.5rem;
-            font-weight: 600;
-            margin-bottom: 10px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-          }
-
-          .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-          }
-
-          .table-container {
-            padding: 30px;
-            overflow-x: auto;
-          }
-
-          .students-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-          }
-
-          .students-table thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          }
-
-          .students-table th {
-            padding: 20px 15px;
-            text-align: left;
-            color: white;
-            font-weight: 600;
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .student-row {
-            transition: all 0.3s ease;
-            border-bottom: 1px solid #f0f0f0;
-          }
-
-          .student-row:hover {
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-          }
-
-          .student-row:last-child {
-            border-bottom: none;
-          }
-
-          .students-table td {
-            padding: 20px 15px;
-            vertical-align: middle;
-            font-size: 0.95rem;
-          }
-
-          .dni-cell {
-            font-weight: 600;
-            color: #4facfe;
-            font-family: 'Courier New', monospace;
-          }
-
-          .name-cell {
-            font-weight: 500;
-            color: #2c3e50;
-          }
-
-          .career-cell, .club-cell {
-            color: #555;
-          }
-
-          .no-data {
-            color: #999;
-            font-style: italic;
-            font-size: 0.9rem;
-          }
-
-          .photo-container, .qr-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-          }
-
-          .student-photo {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 4px solid #4facfe;
-            transition: all 0.3s ease;
-            cursor: pointer;
-          }
-
-          .student-photo:hover {
-            transform: scale(1.1);
-            border-color: #667eea;
-          }
-
-          .qr-code {
-            width: 100px;
-            height: 100px;
-            border-radius: 10px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.3s ease;
-            cursor: pointer;
-          }
-
-          .qr-code:hover {
-            transform: scale(1.05);
-            border-color: #4facfe;
-            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.3);
-          }
-
-          .add-student-btn {
-            display: inline-block;
-            margin: 30px;
-            padding: 15px 30px;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
-          }
-
-          .add-student-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.6);
-            text-decoration: none;
-            color: white;
-          }
-
-          .stats {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin: 30px;
-            flex-wrap: wrap;
-          }
-
-          .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px 30px;
-            border-radius: 15px;
-            text-align: center;
-            min-width: 150px;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-          }
-
-          .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-          }
-
-          .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          @media (max-width: 768px) {
-            body {
-              padding: 10px;
-            }
-
-            .header h1 {
-              font-size: 2rem;
-            }
-
-            .table-container {
-              padding: 15px;
-            }
-
-            .students-table th,
-            .students-table td {
-              padding: 15px 10px;
-              font-size: 0.9rem;
-            }
-
-            .student-photo {
-              width: 60px;
-              height: 60px;
-            }
-
-            .qr-code {
-              width: 80px;
-              height: 80px;
-            }
-
-            .stats {
-              flex-direction: column;
-              align-items: center;
-            }
-          }
-
-          @media (max-width: 480px) {
-            .students-table th,
-            .students-table td {
-              padding: 10px 8px;
-              font-size: 0.8rem;
-            }
-
-            .student-photo {
-              width: 50px;
-              height: 50px;
-            }
-
-            .qr-code {
-              width: 70px;
-              height: 70px;
-            }
-          }
-        </style>
       </head>
+      <style>
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  color: #333;
+  line-height: 1.6;
+}
+
+/* Contenedor principal */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 15px;
+  color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 300;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+/* Contenedor de tabla */
+.table-container {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+  overflow-x: auto;
+}
+
+/* Tabla */
+.students-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+/* Encabezados de tabla */
+.students-table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.students-table th {
+  padding: 15px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: white;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+}
+
+.students-table th:first-child {
+  border-top-left-radius: 10px;
+}
+
+.students-table th:last-child {
+  border-top-right-radius: 10px;
+}
+
+/* Filas de tabla */
+.students-table tbody tr {
+  background: white;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid #eee;
+}
+
+.students-table tbody tr:hover {
+  background: #f8f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.students-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Celdas de tabla */
+.students-table td {
+  padding: 15px 12px;
+  vertical-align: middle;
+  font-size: 0.9rem;
+  border: none;
+}
+
+/* Fotos de estudiantes */
+.student-photo {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 3px solid #667eea;
+}
+
+.student-photo:hover {
+  transform: scale(1.1);
+  border-color: #764ba2;
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Códigos QR */
+.qr-code {
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+}
+
+.qr-code:hover {
+  transform: scale(1.1);
+  border-color: #667eea;
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* Botón agregar estudiante */
+.add-student-btn {
+  display: inline-block;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px 30px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.add-student-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* Badges para clubes */
+.club-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .header h1 {
+    font-size: 2rem;
+  }
+  
+  .header p {
+    font-size: 1rem;
+  }
+  
+  .table-container {
+    padding: 15px;
+  }
+  
+  .students-table th,
+  .students-table td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+  }
+  
+  .student-photo {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .qr-code {
+    width: 35px;
+    height: 35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .students-table th,
+  .students-table td {
+    padding: 8px 6px;
+    font-size: 0.75rem;
+  }
+  
+  .add-student-btn {
+    padding: 12px 25px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Animaciones suaves */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.student-row {
+  animation: slideInUp 0.6s ease forwards;
+}
+
+/* Scrollbar personalizada */
+.table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+      </style>
       <body>
         <div class="container">
           <div class="header">
@@ -2233,7 +2248,7 @@ app.post('/ver-datos/:tabla', authMiddleware, async (req, res) => {
       fs.writeFileSync(filepath, content);
       return res.download(filepath, filename, (err) => {
         if (err) console.error('❌ Error al descargar:', err);
-        fs.unlinkSync(filepath); // borrar temporal
+        fs.unlinkSync(filepath); 
       });
     }
   } catch (err) {
