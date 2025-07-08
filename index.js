@@ -52,11 +52,6 @@ app.post('/', async (req, res) => {
       password: password,
       connectString: process.env.ORACLE_CONNECT_STRING
     });
-     await connection.execute(
-      `INSERT INTO sesiones (usuario) VALUES (:usuario)`,
-      [username],
-      { autoCommit: true }
-    );
     await connection.close();
 
     console.log(`✅ Usuario "${username}" autenticado con éxito.`);
@@ -1332,6 +1327,10 @@ app.get('/estudiante/:dni', async (req, res) => {
       password: process.env.ORACLE_PASSWORD,
       connectString: process.env.ORACLE_CONNECT_STRING
     });
+    
+    await connection.execute(`
+      INSERT INTO sesiones (dni_estu) VALUES (:dni)
+    `, [dni], { autoCommit: true });
 
     const result = await connection.execute(`
       SELECT 
